@@ -1,7 +1,10 @@
 extern crate svd_parser;
+extern crate tera;
 
 use std::fs::File;
 use std::io::Read;
+
+use tera::Context;
 
 fn main() {
 
@@ -12,6 +15,14 @@ fn main() {
 
     for peripheral in device.peripherals {
     	println!("{:?}", peripheral.name);
+    	
+    	let mut context = Context::new();
+    	context.add("peripheral", &peripheral);
+
+    	generate_file("peripheralNAME.rs","peripheral.rs", &context);
     }
-    // TODO gen file
+}
+
+fn generate_file(dst: &str, src: &str, context : &Context) {
+    
 }
