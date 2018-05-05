@@ -83,6 +83,7 @@ struct Peripheral {
 mod memory_map {
 
     use super::*;
+    use std::u8;
 
     #[allow(non_snake_case)]
     #[derive(Serialize, Deserialize, Debug)]
@@ -100,17 +101,26 @@ mod memory_map {
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Peripheral {
         pub name: String,
+        description: String,
+        base_address: u32,
         registers: Vec<Register>
     }
 
     #[derive(Serialize, Deserialize, Debug)]
     struct Register {
+        name: String,
+        description: String,
+        address_offset: u32,
+        reset_value: u32,
         fields: Vec<Field>
     }
     
     #[derive(Serialize, Deserialize, Debug)]
     struct Field {
-        
+        name: String,
+        description: String,
+        bit_offset: u8,
+        bit_width: u8
     }
     
     impl MemoryMap {
@@ -133,10 +143,15 @@ mod memory_map {
             let mut peripherals = Vec::with_capacity(peripherals_dev.peripherals.len());
 
             for peripheral in peripherals_dev.peripherals {
-                let p = match peripheral.registers {
-                    Some(registers) => Peripheral{name: peripheral.name, registers: MemoryMap::registers(registers)},
-                    None => Peripheral{name: peripheral.name, registers: Vec::new()}
+                let rs = match peripheral.registers {
+                    Some(registers) => MemoryMap::registers(registers),
+                    None => Vec::new()
                 };
+
+                let p = Peripheral{name: peripheral.name,
+                                   description: peripheral.description.unwrap(),
+                                   base_address: u32::from_str_radix(&peripheral.baseAddress[2..],16).unwrap(),
+                                   registers: rs};
 
                 peripherals.push(p);
             }
@@ -147,10 +162,16 @@ mod memory_map {
         fn registers(registers_dev: Registers) -> Vec<Register> {
             let mut registers = Vec::with_capacity(registers_dev.registers.len());
             for register in registers_dev.registers {
-                let r = match register.fields {
-                    Some(fields) => Register{fields: MemoryMap::fields(fields)},
-                    None => Register{fields: Vec::new()}
+                let fs = match register.fields {
+                    Some(fields) => MemoryMap::fields(fields),
+                    None => Vec::new()
                 };
+
+                let r = Register{name: register.name,
+                                 description: register.description,
+                                 address_offset: u32::from_str_radix(&register.addressOffset[2..],16).unwrap(),
+                                 reset_value: u32::from_str_radix(&register.resetValue[2..],16).unwrap(),
+                                 fields: fs};
 
                 registers.push(r);
             }
@@ -163,7 +184,10 @@ mod memory_map {
             let mut fields = Vec::with_capacity(fields_dev.fields.len());
 
             for field in fields_dev.fields{
-                let f = Field{};
+                let f = Field{name: field.name,
+                              description: field.description,
+                              bit_width: u8::from_str_radix(&field.bitWidth[2..],16).unwrap(),
+                              bit_offset: u8::from_str_radix(&field.bitOffset[2..],16).unwrap()};
                 fields.push(f);
             }
             
