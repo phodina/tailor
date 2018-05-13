@@ -204,6 +204,19 @@ mod memory_map {
             
             Ok(fields)
         }
+
+        pub fn generate_peripherals(&self, generator: &Generator) -> Result<()> {
+            for peripheral in self.peripherals.iter() {
+	        let mut context = Context::new();
+	        context.add("peripheral", &peripheral);
+	        let mut filename = peripheral.name.clone();
+	        filename.push_str(".rs");
+
+	        generator.generate_file(&context,Path::new("peripheral.rs"), Path::new(&filename))?;
+	    }
+            
+            Ok(())
+        }
     }
 }
 
@@ -229,13 +242,5 @@ fn main() {
         ::std::process::exit(1);
     }
     
-    
-    for peripheral in mm.unwrap().peripherals {
-	    let mut context = Context::new();
-	    context.add("peripheral", &peripheral);
-	    let mut filename = peripheral.name.clone();
-	    filename.push_str(".rs");
-
-	    generator.generate_file(&context,Path::new("peripheral.rs"), Path::new(&filename)).unwrap();
-	}
+    mm.unwrap().generate_peripherals(&generator);
 }
