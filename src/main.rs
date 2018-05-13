@@ -141,63 +141,68 @@ mod memory_map {
                 size: u32::from_str_radix(&device.size[2..],16).chain_err(|| "Unable to parse size")?,
                 resetValue: u32::from_str_radix(&device.resetValue[2..],16).chain_err(|| "Unable to parse resetValue")?,
                 resetMask: u32::from_str_radix(&device.resetMask[2..],16).chain_err(|| "Unable to parse resetMask")?,
-                peripherals: MemoryMap::peripherals(device.peripherals),
+                peripherals: MemoryMap::peripherals(device.peripherals)?,
             })
         }
 
-        fn peripherals(peripherals_dev: Peripherals) -> Vec<Peripheral> {
+        fn peripherals(peripherals_dev: Peripherals) -> Result<Vec<Peripheral>> {
             let mut peripherals = Vec::with_capacity(peripherals_dev.peripherals.len());
 
             for peripheral in peripherals_dev.peripherals {
                 let rs = match peripheral.registers {
-                    Some(registers) => MemoryMap::registers(registers),
+                    Some(registers) => MemoryMap::registers(registers)?,
                     None => Vec::new()
                 };
 
+                let description = match peripheral.description {
+                    Some(des) => des,
+                    None => String::new()
+                };
+                
                 let p = Peripheral{name: peripheral.name,
-                                   description: String::new(),//peripheral.description.unwrap(),
-                                   base_address: 0x00,//u32::from_str_radix(&peripheral.baseAddress[2..],16).unwrap(),
+                                   description: description,
+                                   base_address: u32::from_str_radix(&peripheral.baseAddress[2..],16).chain_err(|| "Unable to parse baseAddress")?,
                                    registers: rs};
 
                 peripherals.push(p);
             }
           
-            peripherals
+            Ok(peripherals)
         }
 
-        fn registers(registers_dev: Registers) -> Vec<Register> {
+        fn registers(registers_dev: Registers) -> Result<Vec<Register>> {
             let mut registers = Vec::with_capacity(registers_dev.registers.len());
             for register in registers_dev.registers {
                 let fs = match register.fields {
-                    Some(fields) => MemoryMap::fields(fields),
+                    Some(fields) => MemoryMap::fields(fields)?,
                     None => Vec::new()
                 };
 
                 let r = Register{name: register.name,
                                  description: register.description,
-                                 address_offset: 0x00,//u32::from_str_radix(&register.addressOffset[2..],16).unwrap(),
-                                 reset_value: 0x00,//u32::from_str_radix(&register.resetValue[2..],16).unwrap(),
+                                 address_offset: u32::from_str_radix(&register.addressOffset[2..],16).chain_err(|| "Unable to parse AddressOffset")?,
+                                 reset_value: u32::from_str_radix(&register.resetValue[2..],16).chain_err(|| "Unable to parse ResetValue")?,
                                  fields: fs};
 
                 registers.push(r);
             }
             
-            registers
+            Ok(registers)
         }
 
-        fn fields(fields_dev: Fields) -> Vec<Field>{
+        fn fields(fields_dev: Fields) -> Result<Vec<Field>>{
 
             let mut fields = Vec::with_capacity(fields_dev.fields.len());
 
             for field in fields_dev.fields{
                 let f = Field{name: field.name,
                               description: field.description,
-                              bit_width: 0x00,//u8::from_str_radix(&field.bitWidth[2..],16).unwrap(),
-                              bit_offset: 0x00};//u8::from_str_radix(&field.bitOffset[2..],16).unwrap()};
+                              bit_width: field.bitWidth.parse::<u8>().chain_err(|| "Unable to parse BitWidth")?,
+                              bit_offset: field.bitOffset.parse::<u8>().chain_err(|| "Unable to parse BitOffset")?};
                 fields.push(f);
             }
             
-            fields
+            Ok(fields)
         }
     }
 }
