@@ -131,8 +131,12 @@ mod memory_map {
     
     impl MemoryMap {
         
-        pub fn new (device: Device) -> Result<MemoryMap> {
+        pub fn new (filename: &Path) -> Result<MemoryMap> {
 
+            let file = File::open(filename)?;
+
+            let device: Device = serde_xml_rs::deserialize(file)?;
+            
             Ok(MemoryMap{
                 name: device.name,
                 description: device.description,
@@ -224,10 +228,8 @@ fn main() {
     let path = env::current_dir().unwrap();
     let template_path = path.to_str().unwrap().to_string();
 
-    let file = File::open("STM32F30x.svd").unwrap();
-
-    let svd: Device = serde_xml_rs::deserialize(file).unwrap();
-    let mm = memory_map::MemoryMap::new(svd);
+    let filename = Path::new("STM32F30x.svd");
+    let mm = memory_map::MemoryMap::new(filename);
 
     let generator = Generator::new(Path::new("project"), Path::new("templates")).unwrap();
     
