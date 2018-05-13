@@ -4,6 +4,12 @@ extern crate clap;
 extern crate serde_derive;
 extern crate serde_xml_rs;
 extern crate generator;
+#[macro_use]
+extern crate error_chain;
+
+mod errors;
+
+use errors::*;
 
 use std::path::Path;
 use std::env;
@@ -125,18 +131,18 @@ mod memory_map {
     
     impl MemoryMap {
         
-        pub fn new (device: Device) -> MemoryMap {
+        pub fn new (device: Device) -> Result<MemoryMap> {
 
-            MemoryMap{
+            Ok(MemoryMap{
                 name: device.name,
                 description: device.description,
-                addressUnitBits: device.addressUnitBits.parse::<u8>().unwrap(),
-                width: device.width.parse::<u8>().unwrap(),
-                size: device.size.parse::<u32>().unwrap(),
-                resetValue: device.resetValue.parse::<u32>().unwrap(),
-                resetMask: device.resetMask.parse::<u32>().unwrap(),
+                addressUnitBits: device.addressUnitBits.parse::<u8>().chain_err(|| "Unable to parse addressUnitbits")?,
+                width: device.width.parse::<u8>().chain_err(|| "Unable to parse width")?,
+                size: u32::from_str_radix(&device.size[2..],16).chain_err(|| "Unable to parse size")?,
+                resetValue: u32::from_str_radix(&device.resetValue[2..],16).chain_err(|| "Unable to parse resetValue")?,
+                resetMask: u32::from_str_radix(&device.resetMask[2..],16).chain_err(|| "Unable to parse resetMask")?,
                 peripherals: MemoryMap::peripherals(device.peripherals),
-            }
+            })
         }
 
         fn peripherals(peripherals_dev: Peripherals) -> Vec<Peripheral> {
@@ -149,8 +155,8 @@ mod memory_map {
                 };
 
                 let p = Peripheral{name: peripheral.name,
-                                   description: peripheral.description.unwrap(),
-                                   base_address: u32::from_str_radix(&peripheral.baseAddress[2..],16).unwrap(),
+                                   description: String::new(),//peripheral.description.unwrap(),
+                                   base_address: 0x00,//u32::from_str_radix(&peripheral.baseAddress[2..],16).unwrap(),
                                    registers: rs};
 
                 peripherals.push(p);
@@ -169,8 +175,8 @@ mod memory_map {
 
                 let r = Register{name: register.name,
                                  description: register.description,
-                                 address_offset: u32::from_str_radix(&register.addressOffset[2..],16).unwrap(),
-                                 reset_value: u32::from_str_radix(&register.resetValue[2..],16).unwrap(),
+                                 address_offset: 0x00,//u32::from_str_radix(&register.addressOffset[2..],16).unwrap(),
+                                 reset_value: 0x00,//u32::from_str_radix(&register.resetValue[2..],16).unwrap(),
                                  fields: fs};
 
                 registers.push(r);
@@ -186,8 +192,8 @@ mod memory_map {
             for field in fields_dev.fields{
                 let f = Field{name: field.name,
                               description: field.description,
-                              bit_width: u8::from_str_radix(&field.bitWidth[2..],16).unwrap(),
-                              bit_offset: u8::from_str_radix(&field.bitOffset[2..],16).unwrap()};
+                              bit_width: 0x00,//u8::from_str_radix(&field.bitWidth[2..],16).unwrap(),
+                              bit_offset: 0x00};//u8::from_str_radix(&field.bitOffset[2..],16).unwrap()};
                 fields.push(f);
             }
             
@@ -204,10 +210,22 @@ fn main() {
 
     let svd: Device = serde_xml_rs::deserialize(file).unwrap();
     let mm = memory_map::MemoryMap::new(svd);
+
+    let generator = Generator::new(Path::new("project"), Path::new("templates")).unwrap();
     
-    let generator = Generator::new(Path::new("project"), Path::new("template")).unwrap();
+    if let Err(ref e) = mm {
+
+        println!("error: {}", e);
+
+        for e in e.iter().skip(1){
+            println!("caused by: {}", e);
+        }
+
+        ::std::process::exit(1);
+    }
     
-    for peripheral in mm.peripherals {
+    
+    for peripheral in mm.unwrap().peripherals {
 	    let mut context = Context::new();
 	    context.add("peripheral", &peripheral);
 	    let mut filename = peripheral.name.clone();
