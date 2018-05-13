@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;
@@ -12,7 +11,7 @@ mod errors;
 use errors::*;
 
 use std::path::Path;
-use std::env;
+use clap::{Arg, App};
 use std::fs::File;
 
 use generator::{Context,Generator};
@@ -131,7 +130,7 @@ mod memory_map {
     
     impl MemoryMap {
         
-        pub fn new (filename: &Path) -> Result<MemoryMap> {
+        pub fn new (filename: &str) -> Result<MemoryMap> {
 
             let file = File::open(filename)?;
 
@@ -225,15 +224,39 @@ mod memory_map {
 }
 
 fn main() {
-    let path = env::current_dir().unwrap();
-    let template_path = path.to_str().unwrap().to_string();
+    let matches = App::new("Tailor")
+        .version("1.0")
+        .author("Petr Hodina <hodinapetr46@gmail.com>")
+        .about("Generate rust code for MCU from SVD description ")
+        .arg(Arg::with_name("output")
+             .short("o")
+             .long("output")
+             .value_name("FILE")
+             .help("Output dir")
+             .takes_value(true)
+             .required(true))
+        .arg(Arg::with_name("templates")
+             .short("t")
+             .long("templates")
+             .help("Sets the input file to use")
+             .takes_value(true)
+             .required(true))
+        .arg(Arg::with_name("svd")
+             .short("s")
+             .long("svd")
+             .takes_value(true)
+             .required(true)
+             .help("SVD input file"))
+        .get_matches();
 
-    let filename = Path::new("STM32F30x.svd");
-    let mm = memory_map::MemoryMap::new(filename);
+    let output = matches.value_of("output").unwrap();
+    let templates = matches.value_of("templates").unwrap();
+    let svd_filename = matches.value_of("svd").unwrap();
 
-    let generator = Generator::new(Path::new("project"), Path::new("templates")).unwrap();
+    let output = Path::new(output);
+    let templates = Path::new(templates);
     
-    if let Err(ref e) = mm {
+    if let Err(ref e) = run(output, templates, svd_filename) {
 
         println!("error: {}", e);
 
@@ -244,5 +267,17 @@ fn main() {
         ::std::process::exit(1);
     }
     
-    mm.unwrap().generate_peripherals(&generator);
+}
+
+fn run (output: &Path, templates: &Path, svd_filename: &str) -> Result<()> {
+
+    if !output.exists() {
+        std::fs::create_dir_all(output)?;
+    }
+    
+    let mm = memory_map::MemoryMap::new(svd_filename)?;
+
+    let generator = Generator::new(output, templates).unwrap();
+    
+    mm.generate_peripherals(&generator)
 }
