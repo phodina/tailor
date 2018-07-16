@@ -114,6 +114,7 @@ mod memory_map {
     #[derive(Serialize, Deserialize, Debug)]
     struct Register {
         name: String,
+        size: u32,
         description: String,
         address_offset: u32,
         reset_value: u32,
@@ -183,6 +184,7 @@ mod memory_map {
 
                 let r = Register{name: register.name,
                                  description: register.description,
+                                 size: u32::from_str_radix(&register.size[2..],16).chain_err(|| "Unable to parse Size")?,
                                  address_offset: u32::from_str_radix(&register.addressOffset[2..],16).chain_err(|| "Unable to parse AddressOffset")?,
                                  reset_value: u32::from_str_radix(&register.resetValue[2..],16).chain_err(|| "Unable to parse ResetValue")?,
                                  fields: fs};
