@@ -3,6 +3,6 @@ error_chain!{
             Io(::std::io::Error);
             SerdeXML(::serde_xml_rs::Error);
             Parse(::std::num::ParseIntError);
-            Generator(::generator::errors::Error);
+            Fgen(::fgen::errors::Error);
         }
     }

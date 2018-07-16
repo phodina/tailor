@@ -2,7 +2,7 @@ extern crate clap;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_xml_rs;
-extern crate generator;
+extern crate fgen;
 #[macro_use]
 extern crate error_chain;
 
@@ -14,7 +14,7 @@ use std::path::Path;
 use clap::{Arg, App};
 use std::fs::File;
 
-use generator::{Context,Generator};
+use fgen::{Context,Generator};
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug)]
